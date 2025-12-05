@@ -52,8 +52,8 @@ const Hero = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
           >
-            Connect with people who want to learn what you know. 
-            Teach guitar, learn coding. Share photography, pick up a new language. 
+            Connect with people who want to learn what you know.
+            Teach guitar, learn coding. Share photography, pick up a new language.
             No money needed—just your skills.
           </motion.p>
 
@@ -64,12 +64,12 @@ const Hero = () => {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="flex flex-col sm:flex-row gap-4 justify-center mb-16"
           >
-            <Link to="/auth">
+            {/* <Link to="/auth">
               <Button variant="hero" size="xl" className="w-full sm:w-auto">
                 Start Bartering
                 <ArrowRight className="w-5 h-5" />
               </Button>
-            </Link>
+            </Link> */}
             <Link to="/browse">
               <Button variant="outline" size="xl" className="w-full sm:w-auto">
                 Browse Skills
@@ -90,7 +90,7 @@ const Hero = () => {
               </div>
               <div className="text-left">
                 <p className="text-2xl font-bold text-foreground">10K+</p>
-                <p className="text-sm text-muted-foreground">Active Users</p>
+                <p className="text-sm text-muted-foreground">Target Users</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -99,7 +99,7 @@ const Hero = () => {
               </div>
               <div className="text-left">
                 <p className="text-2xl font-bold text-foreground">25K+</p>
-                <p className="text-sm text-muted-foreground">Barters Made</p>
+                <p className="text-sm text-muted-foreground">Target Barters</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -108,7 +108,7 @@ const Hero = () => {
               </div>
               <div className="text-left">
                 <p className="text-2xl font-bold text-foreground">4.9</p>
-                <p className="text-sm text-muted-foreground">Avg Rating</p>
+                <p className="text-sm text-muted-foreground">Target Avg Rating</p>
               </div>
             </div>
           </motion.div>
