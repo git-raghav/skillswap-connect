@@ -1,111 +1,140 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import SkillCard from "@/components/skills/SkillCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal, X, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
-const allSkills = [
-  {
-    id: "1",
-    userName: "Alex Rivera",
-    userAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-    skillOffered: "Guitar Lessons",
-    skillWanted: "Web Development",
-    rating: 4.9,
-    reviews: 47,
-    location: "San Francisco",
-    category: "Music",
-  },
-  {
-    id: "2",
-    userName: "Maya Chen",
-    userAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face",
-    skillOffered: "Python Programming",
-    skillWanted: "Spanish Language",
-    rating: 5.0,
-    reviews: 32,
-    location: "New York",
-    category: "Technology",
-  },
-  {
-    id: "3",
-    userName: "Jordan Kim",
-    userAvatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&h=150&fit=crop&crop=face",
-    skillOffered: "Photography",
-    skillWanted: "Cooking Classes",
-    rating: 4.8,
-    reviews: 28,
-    location: "Los Angeles",
-    category: "Creative",
-  },
-  {
-    id: "4",
-    userName: "Sam Patel",
-    userAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face",
-    skillOffered: "Yoga Instruction",
-    skillWanted: "Graphic Design",
-    rating: 4.7,
-    reviews: 56,
-    location: "Austin",
-    category: "Fitness",
-  },
-  {
-    id: "5",
-    userName: "Emma Wilson",
-    userAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-    skillOffered: "French Language",
-    skillWanted: "Piano Lessons",
-    rating: 4.9,
-    reviews: 41,
-    location: "Chicago",
-    category: "Languages",
-  },
-  {
-    id: "6",
-    userName: "Marcus Johnson",
-    userAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
-    skillOffered: "Basketball Coaching",
-    skillWanted: "Video Editing",
-    rating: 4.6,
-    reviews: 23,
-    location: "Miami",
-    category: "Sports",
-  },
-  {
-    id: "7",
-    userName: "Lisa Zhang",
-    userAvatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&h=150&fit=crop&crop=face",
-    skillOffered: "UI/UX Design",
-    skillWanted: "Japanese Language",
-    rating: 5.0,
-    reviews: 38,
-    location: "Seattle",
-    category: "Design",
-  },
-  {
-    id: "8",
-    userName: "David Brown",
-    userAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-    skillOffered: "Financial Planning",
-    skillWanted: "Meditation Classes",
-    rating: 4.8,
-    reviews: 29,
-    location: "Boston",
-    category: "Business",
-  },
-];
+interface SkillListing {
+  id: string;
+  userName: string;
+  userAvatar: string;
+  skillOffered: string;
+  skillWanted: string;
+  rating: number;
+  reviews: number;
+  location: string;
+  category: string;
+  userId: string;
+}
 
 const categories = ["All", "Technology", "Music", "Creative", "Fitness", "Languages", "Sports", "Design", "Business"];
 
 const Browse = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [skills, setSkills] = useState<SkillListing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const filteredSkills = allSkills.filter((skill) => {
+  useEffect(() => {
+    fetchSkills();
+  }, []);
+
+  const fetchSkills = async () => {
+    try {
+      const { data: profiles, error } = await supabase
+        .from("profiles")
+        .select(`
+          id,
+          user_id,
+          full_name,
+          avatar_url,
+          location,
+          skill_offered,
+          skill_wanted
+        `)
+        .not("skill_offered", "is", null);
+
+      if (error) throw error;
+
+      // Get ratings for each user
+      const skillListings: SkillListing[] = await Promise.all(
+        (profiles || []).map(async (profile) => {
+          const { data: ratings } = await supabase
+            .from("ratings")
+            .select("rating")
+            .eq("rated_id", profile.user_id);
+
+          const avgRating = ratings?.length
+            ? ratings.reduce((a, b) => a + b.rating, 0) / ratings.length
+            : 0;
+
+          // Get skill category from skills table
+          const { data: skillData } = await supabase
+            .from("skills")
+            .select("category")
+            .eq("user_id", profile.user_id)
+            .eq("skill_type", "offered")
+            .limit(1)
+            .maybeSingle();
+
+          return {
+            id: profile.id,
+            userName: profile.full_name || "Anonymous",
+            userAvatar: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.user_id}`,
+            skillOffered: profile.skill_offered || "Various Skills",
+            skillWanted: profile.skill_wanted || "Open to offers",
+            rating: avgRating || 4.5,
+            reviews: ratings?.length || 0,
+            location: profile.location || "Remote",
+            category: skillData?.category || "General",
+            userId: profile.user_id,
+          };
+        })
+      );
+
+      setSkills(skillListings);
+    } catch (error) {
+      console.error("Error fetching skills:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRequestBarter = async (skillListing: SkillListing) => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to request a barter",
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from("barter_requests").insert({
+        requester_id: user.id,
+        recipient_id: skillListing.userId,
+        message: `Hi! I'd like to exchange skills with you.`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Request sent!",
+        description: `Your barter request has been sent to ${skillListing.userName}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send request",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const filteredSkills = skills.filter((skill) => {
     const matchesSearch =
       skill.skillOffered.toLowerCase().includes(searchQuery.toLowerCase()) ||
       skill.skillWanted.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -190,30 +219,46 @@ const Browse = () => {
             transition={{ delay: 0.2 }}
             className="text-muted-foreground mb-6"
           >
-            Showing {filteredSkills.length} results
+            {loading ? "Loading..." : `Showing ${filteredSkills.length} results`}
           </motion.p>
 
-          {/* Skills Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredSkills.map((skill, index) => (
-              <motion.div
-                key={skill.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 + index * 0.05 }}
-              >
-                <SkillCard {...skill} />
-              </motion.div>
-            ))}
-          </div>
+          {/* Loading State */}
+          {loading && (
+            <div className="flex justify-center py-16">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          )}
 
-          {filteredSkills.length === 0 && (
+          {/* Skills Grid */}
+          {!loading && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredSkills.map((skill, index) => (
+                <motion.div
+                  key={skill.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + index * 0.05 }}
+                >
+                  <SkillCard 
+                    {...skill} 
+                    onRequestBarter={() => handleRequestBarter(skill)}
+                  />
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          {!loading && filteredSkills.length === 0 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-center py-16"
             >
-              <p className="text-xl text-muted-foreground mb-4">No skills found matching your criteria</p>
+              <p className="text-xl text-muted-foreground mb-4">
+                {skills.length === 0 
+                  ? "No skills listed yet. Be the first to add yours!"
+                  : "No skills found matching your criteria"}
+              </p>
               <Button variant="outline" onClick={() => { setSearchQuery(""); setSelectedCategory("All"); }}>
                 Clear Filters
               </Button>

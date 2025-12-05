@@ -8,6 +8,7 @@ import Browse from "./pages/Browse";
 import Profile from "./pages/Profile";
 import Requests from "./pages/Requests";
 import Messages from "./pages/Messages";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,8 +21,12 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/login" element={<Auth />} />
+          <Route path="/signup" element={<Auth />} />
           <Route path="/browse" element={<Browse />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/:userId" element={<Profile />} />
           <Route path="/requests" element={<Requests />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="*" element={<NotFound />} />
