@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -10,12 +11,17 @@ import {
   CheckCircle, 
   XCircle, 
   MessageCircle,
-  ArrowRightLeft 
+  ArrowRightLeft,
+  Loader2
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 interface BarterRequest {
   id: string;
   user: {
+    id: string;
     name: string;
     avatar: string;
   };
@@ -24,58 +30,8 @@ interface BarterRequest {
   status: "pending" | "accepted" | "declined" | "completed";
   date: string;
   type: "incoming" | "outgoing";
+  message: string;
 }
-
-const requests: BarterRequest[] = [
-  {
-    id: "1",
-    user: {
-      name: "Maya Chen",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face",
-    },
-    skillOffered: "Python Programming",
-    skillWanted: "Guitar Lessons",
-    status: "pending",
-    date: "2 hours ago",
-    type: "incoming",
-  },
-  {
-    id: "2",
-    user: {
-      name: "Jordan Kim",
-      avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&h=100&fit=crop&crop=face",
-    },
-    skillOffered: "Photography",
-    skillWanted: "Music Theory",
-    status: "accepted",
-    date: "1 day ago",
-    type: "incoming",
-  },
-  {
-    id: "3",
-    user: {
-      name: "Sam Patel",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face",
-    },
-    skillOffered: "Guitar Lessons",
-    skillWanted: "Yoga Instruction",
-    status: "pending",
-    date: "3 days ago",
-    type: "outgoing",
-  },
-  {
-    id: "4",
-    user: {
-      name: "Emma Wilson",
-      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face",
-    },
-    skillOffered: "French Language",
-    skillWanted: "Guitar Lessons",
-    status: "completed",
-    date: "1 week ago",
-    type: "incoming",
-  },
-];
 
 const statusConfig = {
   pending: { icon: Clock, color: "bg-amber-500/10 text-amber-600", label: "Pending" },
@@ -86,6 +42,146 @@ const statusConfig = {
 
 const Requests = () => {
   const [activeTab, setActiveTab] = useState("all");
+  const [requests, setRequests] = useState<BarterRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+      return;
+    }
+    if (user) {
+      fetchRequests();
+    }
+  }, [user, authLoading]);
+
+  const fetchRequests = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("barter_requests")
+        .select("*")
+        .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      // Get profiles for all users involved
+      const userIds = new Set<string>();
+      data?.forEach(req => {
+        userIds.add(req.requester_id);
+        userIds.add(req.recipient_id);
+      });
+
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, avatar_url, skill_offered, skill_wanted")
+        .in("user_id", Array.from(userIds));
+
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p]));
+
+      const formattedRequests: BarterRequest[] = (data || []).map(req => {
+        const isIncoming = req.recipient_id === user.id;
+        const otherUserId = isIncoming ? req.requester_id : req.recipient_id;
+        const otherProfile = profileMap.get(otherUserId);
+        const myProfile = profileMap.get(user.id);
+
+        return {
+          id: req.id,
+          user: {
+            id: otherUserId,
+            name: otherProfile?.full_name || "Anonymous",
+            avatar: otherProfile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherUserId}`,
+          },
+          skillOffered: isIncoming 
+            ? (otherProfile?.skill_offered || "Their skill") 
+            : (myProfile?.skill_offered || "Your skill"),
+          skillWanted: isIncoming 
+            ? (myProfile?.skill_offered || "Your skill")
+            : (otherProfile?.skill_offered || "Their skill"),
+          status: req.status as BarterRequest["status"],
+          date: getRelativeTime(req.created_at),
+          type: isIncoming ? "incoming" : "outgoing",
+          message: req.message || "",
+        };
+      });
+
+      setRequests(formattedRequests);
+    } catch (error) {
+      console.error("Error fetching requests:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+
+    if (hours < 1) return "Just now";
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  const handleAccept = async (requestId: string) => {
+    try {
+      const { error } = await supabase
+        .from("barter_requests")
+        .update({ status: "accepted", updated_at: new Date().toISOString() })
+        .eq("id", requestId);
+
+      if (error) throw error;
+
+      setRequests(prev => prev.map(r => 
+        r.id === requestId ? { ...r, status: "accepted" } : r
+      ));
+      toast({ title: "Request accepted!", description: "You can now start chatting." });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDecline = async (requestId: string) => {
+    try {
+      const { error } = await supabase
+        .from("barter_requests")
+        .update({ status: "declined", updated_at: new Date().toISOString() })
+        .eq("id", requestId);
+
+      if (error) throw error;
+
+      setRequests(prev => prev.map(r => 
+        r.id === requestId ? { ...r, status: "declined" } : r
+      ));
+      toast({ title: "Request declined" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleCancel = async (requestId: string) => {
+    try {
+      const { error } = await supabase
+        .from("barter_requests")
+        .delete()
+        .eq("id", requestId);
+
+      if (error) throw error;
+
+      setRequests(prev => prev.filter(r => r.id !== requestId));
+      toast({ title: "Request cancelled" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
 
   const filteredRequests = requests.filter((req) => {
     if (activeTab === "all") return true;
@@ -120,7 +216,7 @@ const Requests = () => {
             </div>
 
             <div className="bg-muted/50 rounded-lg p-3 mb-3">
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 text-sm flex-wrap">
                 <span className="text-muted-foreground">Offers:</span>
                 <span className="font-medium text-foreground">{request.skillOffered}</span>
                 <ArrowRightLeft className="w-4 h-4 text-primary mx-2" />
@@ -134,18 +230,29 @@ const Requests = () => {
               <div className="flex gap-2">
                 {request.status === "pending" && request.type === "incoming" && (
                   <>
-                    <Button size="sm" variant="default">Accept</Button>
-                    <Button size="sm" variant="outline">Decline</Button>
+                    <Button size="sm" variant="default" onClick={() => handleAccept(request.id)}>
+                      Accept
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleDecline(request.id)}>
+                      Decline
+                    </Button>
                   </>
                 )}
                 {request.status === "accepted" && (
-                  <Button size="sm" variant="soft" className="gap-1">
+                  <Button 
+                    size="sm" 
+                    variant="soft" 
+                    className="gap-1"
+                    onClick={() => navigate("/messages")}
+                  >
                     <MessageCircle className="w-4 h-4" />
                     Chat
                   </Button>
                 )}
                 {request.status === "pending" && request.type === "outgoing" && (
-                  <Button size="sm" variant="ghost">Cancel</Button>
+                  <Button size="sm" variant="ghost" onClick={() => handleCancel(request.id)}>
+                    Cancel
+                  </Button>
                 )}
               </div>
             </div>
@@ -154,6 +261,14 @@ const Requests = () => {
       </motion.div>
     );
   };
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -188,7 +303,16 @@ const Requests = () => {
               ) : (
                 <div className="text-center py-16 bg-card rounded-2xl border border-border">
                   <ArrowRightLeft className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-lg text-muted-foreground">No requests found</p>
+                  <p className="text-lg text-muted-foreground">
+                    {requests.length === 0 
+                      ? "No barter requests yet. Start by browsing skills!"
+                      : "No requests found in this category"}
+                  </p>
+                  {requests.length === 0 && (
+                    <Button className="mt-4" onClick={() => navigate("/browse")}>
+                      Browse Skills
+                    </Button>
+                  )}
                 </div>
               )}
             </TabsContent>
