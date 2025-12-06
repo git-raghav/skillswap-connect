@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import SkillCard from "@/components/skills/SkillCard";
+import SkillCardSkeleton from "@/components/ui/SkillCardSkeleton";
+import EmptyState from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,10 +25,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Search, SlidersHorizontal, X, Loader2, Star } from "lucide-react";
+import { Search, SlidersHorizontal, X, Star, SearchX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useOnlinePresence } from "@/hooks/useOnlinePresence";
 
 interface SkillListing {
   id: string;
@@ -57,6 +60,7 @@ const Browse = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { isUserOnline } = useOnlinePresence();
 
   useEffect(() => {
     fetchSkills();
@@ -337,25 +341,35 @@ const Browse = () => {
             {loading ? "Loading..." : `Showing ${filteredSkills.length} results`}
           </motion.p>
 
-          {/* Loading State */}
+          {/* Loading State - Skeleton Grid */}
           {loading && (
-            <div className="flex justify-center py-16">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  <SkillCardSkeleton />
+                </motion.div>
+              ))}
             </div>
           )}
 
           {/* Skills Grid */}
-          {!loading && (
+          {!loading && filteredSkills.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredSkills.map((skill, index) => (
                 <motion.div
                   key={skill.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + index * 0.05 }}
+                  transition={{ delay: 0.05 + index * 0.03 }}
                 >
                   <SkillCard 
                     {...skill} 
+                    isOnline={isUserOnline(skill.userId)}
                     onRequestBarter={() => handleRequestBarter(skill)}
                   />
                 </motion.div>
@@ -363,21 +377,24 @@ const Browse = () => {
             </div>
           )}
 
+          {/* Empty State */}
           {!loading && filteredSkills.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-16"
-            >
-              <p className="text-xl text-muted-foreground mb-4">
-                {skills.length === 0 
-                  ? "No skills listed yet. Be the first to add yours!"
-                  : "No skills found matching your criteria"}
-              </p>
-              <Button variant="outline" onClick={clearFilters}>
-                Clear Filters
-              </Button>
-            </motion.div>
+            <EmptyState
+              icon={skills.length === 0 ? Search : SearchX}
+              title={skills.length === 0 ? "No skills listed yet" : "No matches found"}
+              description={
+                skills.length === 0 
+                  ? "Be the first to share your skills with the community!"
+                  : "Try adjusting your filters or search terms to find what you're looking for"
+              }
+              actionLabel={skills.length === 0 ? "Add Your Skills" : "Clear Filters"}
+              onAction={skills.length === 0 ? () => navigate("/profile") : clearFilters}
+              secondaryActionLabel={skills.length === 0 ? undefined : "Browse All"}
+              onSecondaryAction={skills.length === 0 ? undefined : () => {
+                clearFilters();
+                setSelectedCategory("All");
+              }}
+            />
           )}
         </div>
       </main>

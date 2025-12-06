@@ -39,6 +39,9 @@ import ProofUpload from "@/components/profile/ProofUpload";
 import ReportUserDialog from "@/components/profile/ReportUserDialog";
 import BarterPortfolio from "@/components/profile/BarterPortfolio";
 import OnboardingDialog from "@/components/onboarding/OnboardingDialog";
+import ShareProfileButton from "@/components/profile/ShareProfileButton";
+import OnlineIndicator from "@/components/ui/OnlineIndicator";
+import { useOnlinePresence } from "@/hooks/useOnlinePresence";
 
 interface ProfileData {
   id: string;
@@ -518,10 +521,13 @@ const Profile = () => {
                         </Button>
                       </div>
                     ) : (
-                      <Button variant="outline" className="w-full gap-2" onClick={() => setEditing(true)}>
-                        <Edit3 className="w-4 h-4" />
-                        Edit Profile
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="outline" className="flex-1 gap-2" onClick={() => setEditing(true)}>
+                          <Edit3 className="w-4 h-4" />
+                          Edit Profile
+                        </Button>
+                        <ShareProfileButton userId={profile.user_id} userName={profile.full_name} />
+                      </div>
                     )
                   ) : (
                     <>
@@ -529,10 +535,13 @@ const Profile = () => {
                         <ArrowRightLeft className="w-4 h-4" />
                         Request Barter
                       </Button>
-                      <Button variant="outline" className="w-full gap-2" onClick={() => navigate("/messages")}>
-                        <MessageCircle className="w-4 h-4" />
-                        Send Message
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="outline" className="flex-1 gap-2" onClick={() => navigate("/messages")}>
+                          <MessageCircle className="w-4 h-4" />
+                          Message
+                        </Button>
+                        <ShareProfileButton userId={profile.user_id} userName={profile.full_name} />
+                      </div>
                       <ReportUserDialog 
                         reportedUserId={profile.user_id} 
                         reportedUserName={profile.full_name} 

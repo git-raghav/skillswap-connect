@@ -10,6 +10,9 @@ import { useAuth } from "@/hooks/useAuth";
 import ScheduleMeetingDialog from "@/components/messages/ScheduleMeetingDialog";
 import MediaUpload from "@/components/messages/MediaUpload";
 import MessageBubble from "@/components/messages/MessageBubble";
+import EmptyState from "@/components/ui/EmptyState";
+import OnlineIndicator from "@/components/ui/OnlineIndicator";
+import { useOnlinePresence } from "@/hooks/useOnlinePresence";
 
 interface ScheduledMeeting {
   title: string;
@@ -59,6 +62,7 @@ const Messages = () => {
   
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const { isUserOnline } = useOnlinePresence();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -285,13 +289,16 @@ const Messages = () => {
       <div className="min-h-screen bg-background">
         <Navbar />
         <main className="pt-24 pb-16">
-          <div className="container mx-auto px-4 text-center">
-            <MessageCircle className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-foreground mb-2">No conversations yet</h1>
-            <p className="text-muted-foreground mb-6">
-              Accept a barter request to start chatting with other users
-            </p>
-            <Button onClick={() => navigate("/requests")}>View Requests</Button>
+          <div className="container mx-auto px-4">
+            <EmptyState
+              icon={MessageCircle}
+              title="No conversations yet"
+              description="Accept a barter request to start chatting with other users and collaborate on skill exchanges."
+              actionLabel="View Requests"
+              onAction={() => navigate("/requests")}
+              secondaryActionLabel="Browse Skills"
+              onSecondaryAction={() => navigate("/browse")}
+            />
           </div>
         </main>
       </div>
@@ -331,11 +338,18 @@ const Messages = () => {
                     selectedConvo?.id === convo.id ? "bg-muted/50" : ""
                   }`}
                 >
-                  <img
-                    src={convo.user.avatar}
-                    alt={convo.user.name}
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
+                  <div className="relative">
+                    <img
+                      src={convo.user.avatar}
+                      alt={convo.user.name}
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                    <OnlineIndicator 
+                      isOnline={isUserOnline(convo.user.id)} 
+                      size="sm" 
+                      className="bottom-0 right-0" 
+                    />
+                  </div>
                   <div className="flex-1 min-w-0 text-left">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-foreground">{convo.user.name}</span>

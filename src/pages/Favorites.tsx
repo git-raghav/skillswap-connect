@@ -4,12 +4,15 @@ import { motion } from "framer-motion";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import SkillCard from "@/components/skills/SkillCard";
+import SkillCardSkeleton from "@/components/ui/SkillCardSkeleton";
+import EmptyState from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/button";
-import { Heart, Loader2, Search } from "lucide-react";
+import { Heart, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useToast } from "@/hooks/use-toast";
+import { useOnlinePresence } from "@/hooks/useOnlinePresence";
 
 interface SkillListing {
   id: string;
@@ -31,6 +34,7 @@ const Favorites = () => {
   const { toast } = useToast();
   const [skills, setSkills] = useState<SkillListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isUserOnline } = useOnlinePresence();
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -114,8 +118,25 @@ const Favorites = () => {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="pt-24 pb-16">
+          <div className="container mx-auto px-4">
+            <div className="mb-8">
+              <div className="flex items-center gap-3 mb-2">
+                <Heart className="w-8 h-8 text-primary fill-primary" />
+                <h1 className="text-3xl font-bold text-foreground">Saved Skills</h1>
+              </div>
+              <p className="text-muted-foreground">Your bookmarked skill providers</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <SkillCardSkeleton key={index} />
+              ))}
+            </div>
+          </div>
+        </main>
+        <Footer />
       </div>
     );
   }
@@ -138,21 +159,13 @@ const Favorites = () => {
           </motion.div>
 
           {skills.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-16"
-            >
-              <Heart className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-foreground mb-2">No saved skills yet</h2>
-              <p className="text-muted-foreground mb-6">
-                Browse skills and click the heart icon to save them for later
-              </p>
-              <Button onClick={() => navigate("/browse")} className="gap-2">
-                <Search className="w-4 h-4" />
-                Browse Skills
-              </Button>
-            </motion.div>
+            <EmptyState
+              icon={Heart}
+              title="No saved skills yet"
+              description="Browse skills and click the heart icon to save them for later. Your bookmarked skill providers will appear here."
+              actionLabel="Browse Skills"
+              onAction={() => navigate("/browse")}
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {skills.map((skill, index) => (
@@ -164,6 +177,7 @@ const Favorites = () => {
                 >
                   <SkillCard 
                     {...skill}
+                    isOnline={isUserOnline(skill.userId)}
                     onRequestBarter={() => handleRequestBarter(skill)}
                   />
                 </motion.div>
