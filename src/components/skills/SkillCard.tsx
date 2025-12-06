@@ -1,8 +1,9 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Star, MapPin, ArrowRightLeft } from "lucide-react";
+import { Star, MapPin, ArrowRightLeft, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useFavorites } from "@/hooks/useFavorites";
 
 interface SkillCardProps {
   id: string;
@@ -16,6 +17,7 @@ interface SkillCardProps {
   category: string;
   userId: string;
   onRequestBarter?: () => void;
+  showFavorite?: boolean;
 }
 
 const SkillCard = ({
@@ -29,8 +31,11 @@ const SkillCard = ({
   category,
   userId,
   onRequestBarter,
+  showFavorite = true,
 }: SkillCardProps) => {
   const navigate = useNavigate();
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const favorited = isFavorite(userId);
 
   return (
     <motion.div
@@ -60,9 +65,19 @@ const SkillCard = ({
             </div>
           </div>
         </button>
-        <Badge variant="secondary" className="text-xs">
-          {category}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {showFavorite && (
+            <button
+              onClick={() => toggleFavorite(userId)}
+              className="p-1.5 rounded-full hover:bg-muted transition-colors"
+            >
+              <Heart className={`w-5 h-5 ${favorited ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />
+            </button>
+          )}
+          <Badge variant="secondary" className="text-xs">
+            {category}
+          </Badge>
+        </div>
       </div>
 
       {/* Skills Exchange */}

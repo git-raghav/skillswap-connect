@@ -11,6 +11,11 @@ import Messages from "./pages/Messages";
 import Categories from "./pages/Categories";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import Admin from "./pages/Admin";
+import Favorites from "./pages/Favorites";
+import Matches from "./pages/Matches";
+import Insights from "./pages/Insights";
+import Map from "./pages/Map";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +37,11 @@ const App = () => (
           <Route path="/messages" element={<Messages />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/categories/:categoryName" element={<Categories />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/favorites" element={<Favorites />} />
+          <Route path="/matches" element={<Matches />} />
+          <Route path="/insights" element={<Insights />} />
+          <Route path="/map" element={<Map />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
