@@ -71,6 +71,8 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          message_type: string | null
+          scheduled_meeting: Json | null
           sender_id: string
         }
         Insert: {
@@ -78,6 +80,8 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          message_type?: string | null
+          scheduled_meeting?: Json | null
           sender_id: string
         }
         Update: {
@@ -85,6 +89,8 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          message_type?: string | null
+          scheduled_meeting?: Json | null
           sender_id?: string
         }
         Relationships: [
@@ -96,6 +102,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          reference_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          reference_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          reference_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {

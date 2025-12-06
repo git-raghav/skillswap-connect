@@ -4,15 +4,34 @@ import { motion } from "framer-motion";
 import Navbar from "@/components/layout/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Send, Search, Loader2, MessageCircle } from "lucide-react";
+import { Send, Search, Loader2, MessageCircle, Video } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import ScheduleMeetingDialog from "@/components/messages/ScheduleMeetingDialog";
+import MediaUpload from "@/components/messages/MediaUpload";
+import MessageBubble from "@/components/messages/MessageBubble";
+
+interface ScheduledMeeting {
+  title: string;
+  date: string;
+  time: string;
+  meetLink: string;
+}
+
+interface MediaAttachment {
+  url: string;
+  type: string;
+  name: string;
+}
 
 interface Message {
   id: string;
   sender_id: string;
   content: string;
   created_at: string;
+  message_type?: string;
+  scheduled_meeting?: ScheduledMeeting | null;
+  media?: MediaAttachment | null;
 }
 
 interface Conversation {
@@ -35,6 +54,7 @@ const Messages = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [pendingMedia, setPendingMedia] = useState<MediaAttachment | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const { user, loading: authLoading } = useAuth();
@@ -65,19 +85,28 @@ const Messages = () => {
           filter: `barter_id=eq.${selectedConvo.barterId}`,
         },
         (payload) => {
-          const newMsg = payload.new as Message;
+          const newMsg = payload.new as any;
+          const parsedMsg: Message = {
+            id: newMsg.id,
+            sender_id: newMsg.sender_id,
+            content: newMsg.content,
+            created_at: newMsg.created_at,
+            message_type: newMsg.message_type || "text",
+            scheduled_meeting: newMsg.scheduled_meeting,
+            media: newMsg.payload?.media || null,
+          };
           setSelectedConvo(prev => {
             if (!prev) return prev;
             return {
               ...prev,
-              messages: [...prev.messages, newMsg],
-              lastMessage: newMsg.content,
+              messages: [...prev.messages, parsedMsg],
+              lastMessage: parsedMsg.content || "Media attachment",
             };
           });
           setConversations(prev => 
             prev.map(c => 
               c.barterId === selectedConvo.barterId 
-                ? { ...c, lastMessage: newMsg.content, timestamp: "Just now" }
+                ? { ...c, lastMessage: parsedMsg.content || "Media attachment", timestamp: "Just now" }
                 : c
             )
           );
@@ -139,7 +168,17 @@ const Messages = () => {
             .eq("barter_id", barter.id)
             .order("created_at", { ascending: true });
 
-          const lastMsg = messages?.[messages.length - 1];
+          const parsedMessages: Message[] = (messages || []).map((m: any) => ({
+            id: m.id,
+            sender_id: m.sender_id,
+            content: m.content,
+            created_at: m.created_at,
+            message_type: m.message_type || "text",
+            scheduled_meeting: m.scheduled_meeting,
+            media: m.payload?.media || null,
+          }));
+
+          const lastMsg = parsedMessages[parsedMessages.length - 1];
 
           return {
             id: otherUserId,
@@ -151,7 +190,7 @@ const Messages = () => {
             },
             lastMessage: lastMsg?.content || "No messages yet",
             timestamp: lastMsg ? getRelativeTime(lastMsg.created_at) : "",
-            messages: messages || [],
+            messages: parsedMessages,
           };
         })
       );
@@ -183,23 +222,50 @@ const Messages = () => {
   };
 
   const handleSend = async () => {
-    if (!newMessage.trim() || !selectedConvo || !user || sending) return;
+    if ((!newMessage.trim() && !pendingMedia) || !selectedConvo || !user || sending) return;
 
     setSending(true);
     try {
+      const messageContent = newMessage.trim() || (pendingMedia ? `Sent ${pendingMedia.type}` : "");
+      
       const { error } = await supabase.from("messages").insert({
         barter_id: selectedConvo.barterId,
         sender_id: user.id,
-        content: newMessage.trim(),
-      });
+        content: messageContent,
+        message_type: pendingMedia ? "media" : "text",
+        ...(pendingMedia && { payload: { media: pendingMedia } as any }),
+      } as any);
 
       if (error) throw error;
       setNewMessage("");
+      setPendingMedia(null);
     } catch (error) {
       console.error("Error sending message:", error);
     } finally {
       setSending(false);
     }
+  };
+
+  const handleScheduleMeeting = async (meeting: ScheduledMeeting) => {
+    if (!selectedConvo || !user) return;
+
+    try {
+      const { error } = await supabase.from("messages").insert({
+        barter_id: selectedConvo.barterId,
+        sender_id: user.id,
+        content: `Scheduled: ${meeting.title}`,
+        message_type: "meeting",
+        scheduled_meeting: meeting as any,
+      } as any);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error scheduling meeting:", error);
+    }
+  };
+
+  const handleMediaUpload = (media: MediaAttachment) => {
+    setPendingMedia(media);
   };
 
   const filteredConversations = conversations.filter((convo) =>
@@ -301,6 +367,17 @@ const Messages = () => {
                     <h3 className="font-semibold text-foreground">{selectedConvo.user.name}</h3>
                   </div>
                 </div>
+                <div className="flex items-center gap-1">
+                  <ScheduleMeetingDialog onSchedule={handleScheduleMeeting} />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => window.open("https://meet.google.com/new", "_blank")}
+                    title="Start instant video call"
+                  >
+                    <Video className="w-5 h-5" />
+                  </Button>
+                </div>
               </div>
 
               {/* Messages */}
@@ -311,33 +388,59 @@ const Messages = () => {
                   </div>
                 ) : (
                   selectedConvo.messages.map((message) => (
-                    <div
+                    <MessageBubble
                       key={message.id}
-                      className={`flex ${message.sender_id === user?.id ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-[70%] rounded-2xl px-4 py-3 ${
-                          message.sender_id === user?.id
-                            ? "bg-primary text-primary-foreground rounded-br-md"
-                            : "bg-muted text-foreground rounded-bl-md"
-                        }`}
-                      >
-                        <p className="text-sm">{message.content}</p>
-                        <span className={`text-xs mt-1 block ${
-                          message.sender_id === user?.id ? "text-primary-foreground/70" : "text-muted-foreground"
-                        }`}>
-                          {getRelativeTime(message.created_at)}
-                        </span>
-                      </div>
-                    </div>
+                      content={message.content}
+                      isOwn={message.sender_id === user?.id}
+                      timestamp={getRelativeTime(message.created_at)}
+                      messageType={message.message_type}
+                      scheduledMeeting={message.scheduled_meeting}
+                      media={message.media}
+                    />
                   ))
                 )}
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* Pending Media Preview */}
+              {pendingMedia && (
+                <div className="px-4 py-2 border-t border-border bg-muted/50">
+                  <div className="flex items-center gap-3">
+                    {pendingMedia.type === "image" ? (
+                      <img
+                        src={pendingMedia.url}
+                        alt={pendingMedia.name}
+                        className="w-16 h-16 object-cover rounded-lg"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
+                        <span className="text-xs text-muted-foreground">FILE</span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{pendingMedia.name}</p>
+                      <p className="text-xs text-muted-foreground">Ready to send</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setPendingMedia(null)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Input */}
               <div className="p-4 border-t border-border bg-card">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <MediaUpload
+                    userId={user?.id || ""}
+                    barterId={selectedConvo.barterId}
+                    onUpload={handleMediaUpload}
+                    disabled={sending}
+                  />
                   <Input
                     placeholder="Type a message..."
                     value={newMessage}
@@ -345,7 +448,7 @@ const Messages = () => {
                     onKeyPress={(e) => e.key === "Enter" && handleSend()}
                     className="flex-1"
                   />
-                  <Button onClick={handleSend} disabled={!newMessage.trim() || sending}>
+                  <Button onClick={handleSend} disabled={(!newMessage.trim() && !pendingMedia) || sending}>
                     {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                   </Button>
                 </div>
