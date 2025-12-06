@@ -102,6 +102,7 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           created_at: string
+          email_notifications: boolean | null
           full_name: string
           id: string
           location: string | null
@@ -114,6 +115,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          email_notifications?: boolean | null
           full_name: string
           id?: string
           location?: string | null
@@ -126,6 +128,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          email_notifications?: boolean | null
           full_name?: string
           id?: string
           location?: string | null
@@ -174,6 +177,33 @@ export type Database = {
           },
         ]
       }
+      skill_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       skills: {
         Row: {
           category: string
@@ -201,6 +231,66 @@ export type Database = {
           skill_type?: string
           title?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_proofs: {
+        Row: {
+          created_at: string
+          file_type: string
+          file_url: string
+          id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_type: string
+          file_url: string
+          id?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_type?: string
+          file_url?: string
+          id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_reports: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          reason: string
+          reported_user_id: string
+          reporter_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          reason: string
+          reported_user_id: string
+          reporter_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          reason?: string
+          reported_user_id?: string
+          reporter_id?: string
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
