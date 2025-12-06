@@ -71,8 +71,9 @@ const Auth = () => {
         }
         
         toast({ title: "Welcome back!", description: "You've successfully logged in." });
+        navigate("/");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -82,6 +83,11 @@ const Auth = () => {
         });
         if (error) throw error;
         toast({ title: "Account created!", description: "Welcome to Barterly!" });
+        
+        // If auto-confirm is enabled, user will be logged in immediately
+        if (data.session) {
+          navigate("/");
+        }
       }
     } catch (error: any) {
       toast({
