@@ -23,6 +23,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import AvatarUpload from "@/components/profile/AvatarUpload";
+import ProofUpload from "@/components/profile/ProofUpload";
+import ReportUserDialog from "@/components/profile/ReportUserDialog";
 
 interface ProfileData {
   id: string;
@@ -33,6 +36,14 @@ interface ProfileData {
   location: string | null;
   skill_offered: string | null;
   skill_wanted: string | null;
+  created_at: string;
+}
+
+interface Proof {
+  id: string;
+  title: string;
+  file_url: string;
+  file_type: string;
   created_at: string;
 }
 
@@ -52,6 +63,7 @@ const Profile = () => {
   const { toast } = useToast();
   
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [proofs, setProofs] = useState<Proof[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -67,6 +79,7 @@ const Profile = () => {
   });
 
   const isOwnProfile = !userId || (user && profile?.user_id === user.id);
+  const targetUserId = userId || user?.id;
 
   useEffect(() => {
     if (!authLoading) {
@@ -80,7 +93,6 @@ const Profile = () => {
 
   const fetchProfile = async () => {
     try {
-      const targetUserId = userId || user?.id;
       if (!targetUserId) return;
 
       const { data: profileData, error } = await supabase
@@ -110,15 +122,19 @@ const Profile = () => {
         skill_wanted: profileData.skill_wanted || "",
       });
 
+      // Fetch proofs
+      const { data: proofsData } = await supabase
+        .from("user_proofs")
+        .select("*")
+        .eq("user_id", targetUserId)
+        .order("created_at", { ascending: false });
+
+      setProofs(proofsData || []);
+
       // Fetch ratings
       const { data: ratings } = await supabase
         .from("ratings")
-        .select(`
-          rating,
-          review,
-          created_at,
-          rater_id
-        `)
+        .select(`rating, review, created_at, rater_id`)
         .eq("rated_id", targetUserId);
 
       // Fetch barter stats
@@ -203,6 +219,27 @@ const Profile = () => {
     }
   };
 
+  const handleAvatarUpdate = (url: string) => {
+    setProfile(prev => prev ? { ...prev, avatar_url: url } : null);
+  };
+
+  const handleRequestBarter = async () => {
+    if (!user || !profile) return;
+
+    try {
+      const { error } = await supabase.from("barter_requests").insert({
+        requester_id: user.id,
+        recipient_id: profile.user_id,
+        message: `Hi! I'd like to exchange skills with you.`,
+      });
+
+      if (error) throw error;
+      toast({ title: "Request sent!", description: `Your request has been sent to ${profile.full_name}` });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
   if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -231,14 +268,18 @@ const Profile = () => {
                 {/* Avatar & Basic Info */}
                 <div className="text-center mb-6">
                   <div className="relative inline-block mb-4">
-                    <img
-                      src={profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.user_id}`}
-                      alt={profile.full_name}
-                      className="w-32 h-32 rounded-full object-cover border-4 border-primary/20"
+                    <AvatarUpload
+                      currentAvatarUrl={profile.avatar_url}
+                      userId={profile.user_id}
+                      userName={profile.full_name}
+                      onUploadComplete={handleAvatarUpdate}
+                      editable={isOwnProfile && editing}
                     />
-                    <div className="absolute bottom-0 right-0 w-8 h-8 bg-secondary rounded-full flex items-center justify-center border-2 border-background">
-                      <CheckCircle className="w-5 h-5 text-secondary-foreground" />
-                    </div>
+                    {!editing && (
+                      <div className="absolute bottom-0 right-0 w-8 h-8 bg-secondary rounded-full flex items-center justify-center border-2 border-background">
+                        <CheckCircle className="w-5 h-5 text-secondary-foreground" />
+                      </div>
+                    )}
                   </div>
                   
                   {editing ? (
@@ -310,14 +351,18 @@ const Profile = () => {
                     )
                   ) : (
                     <>
-                      <Button variant="default" className="w-full gap-2">
+                      <Button variant="default" className="w-full gap-2" onClick={handleRequestBarter}>
                         <ArrowRightLeft className="w-4 h-4" />
                         Request Barter
                       </Button>
-                      <Button variant="outline" className="w-full gap-2">
+                      <Button variant="outline" className="w-full gap-2" onClick={() => navigate("/messages")}>
                         <MessageCircle className="w-4 h-4" />
                         Send Message
                       </Button>
+                      <ReportUserDialog 
+                        reportedUserId={profile.user_id} 
+                        reportedUserName={profile.full_name} 
+                      />
                     </>
                   )}
                 </div>
@@ -399,6 +444,16 @@ const Profile = () => {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Proofs/Certificates */}
+              <div className="bg-card rounded-2xl border border-border p-6 shadow-card">
+                <ProofUpload
+                  userId={profile.user_id}
+                  proofs={proofs}
+                  onProofsChange={setProofs}
+                  editable={isOwnProfile}
+                />
               </div>
 
               {/* Reviews */}

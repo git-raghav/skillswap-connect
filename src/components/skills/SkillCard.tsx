@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Star, MapPin, ArrowRightLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ interface SkillCardProps {
   reviews: number;
   location: string;
   category: string;
+  userId: string;
   onRequestBarter?: () => void;
 }
 
@@ -25,8 +27,11 @@ const SkillCard = ({
   reviews,
   location,
   category,
+  userId,
   onRequestBarter,
 }: SkillCardProps) => {
+  const navigate = useNavigate();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -38,20 +43,23 @@ const SkillCard = ({
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
+        <button 
+          onClick={() => navigate(`/profile/${userId}`)}
+          className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity"
+        >
           <img
             src={userAvatar}
             alt={userName}
             className="w-12 h-12 rounded-full object-cover border-2 border-primary/20"
           />
           <div>
-            <h3 className="font-semibold text-foreground">{userName}</h3>
+            <h3 className="font-semibold text-foreground hover:text-primary transition-colors">{userName}</h3>
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <MapPin className="w-3 h-3" />
               {location}
             </div>
           </div>
-        </div>
+        </button>
         <Badge variant="secondary" className="text-xs">
           {category}
         </Badge>
