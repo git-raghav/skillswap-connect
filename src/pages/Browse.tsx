@@ -267,12 +267,12 @@ const Browse = () => {
                     {/* Location Filter */}
                     <div className="space-y-2">
                       <Label>Location</Label>
-                      <Select value={locationFilter} onValueChange={setLocationFilter}>
+                      <Select value={locationFilter || "all"} onValueChange={(v) => setLocationFilter(v === "all" ? "" : v)}>
                         <SelectTrigger>
                           <SelectValue placeholder="All locations" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All locations</SelectItem>
+                          <SelectItem value="all">All locations</SelectItem>
                           {availableLocations.map((loc) => (
                             <SelectItem key={loc} value={loc}>{loc}</SelectItem>
                           ))}
@@ -283,12 +283,12 @@ const Browse = () => {
                     {/* Language Filter */}
                     <div className="space-y-2">
                       <Label>Language</Label>
-                      <Select value={languageFilter} onValueChange={setLanguageFilter}>
+                      <Select value={languageFilter || "all"} onValueChange={(v) => setLanguageFilter(v === "all" ? "" : v)}>
                         <SelectTrigger>
                           <SelectValue placeholder="All languages" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All languages</SelectItem>
+                          <SelectItem value="all">All languages</SelectItem>
                           {availableLanguages.map((lang) => (
                             <SelectItem key={lang} value={lang}>{lang}</SelectItem>
                           ))}
