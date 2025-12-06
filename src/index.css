@@ -38,7 +38,7 @@
 
     /* Custom Barterly tokens */
     --gradient-warm: linear-gradient(135deg, hsl(25 95% 55%) 0%, hsl(15 90% 60%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(30 50% 98%) 0%, hsl(30 40% 95%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(30 40% 95%) 100%);
     --gradient-card: linear-gradient(145deg, hsl(30 40% 99%) 0%, hsl(30 35% 97%) 100%);
     --shadow-soft: 0 4px 20px -4px hsl(25 95% 55% / 0.15);
     --shadow-card: 0 2px 12px -2px hsl(20 20% 15% / 0.08);
@@ -91,6 +91,10 @@
     --sidebar-accent-foreground: 30 30% 95%;
     --sidebar-border: 20 20% 20%;
     --sidebar-ring: 25 95% 55%;
+
+    /* Dark mode gradients */
+    --gradient-hero: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(20 20% 10%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(20 20% 12%) 0%, hsl(20 20% 10%) 100%);
   }
 }
 
