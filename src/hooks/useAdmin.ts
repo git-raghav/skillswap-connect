@@ -1,23 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
 export const useAdmin = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user) {
-      checkAdminStatus();
-    } else {
+  const checkAdminStatus = useCallback(async () => {
+    if (!user) {
       setIsAdmin(false);
       setLoading(false);
+      return;
     }
-  }, [user]);
-
-  const checkAdminStatus = async () => {
-    if (!user) return;
+    
+    // Keep loading true while checking
+    setLoading(true);
     
     try {
       const { data, error } = await supabase
@@ -35,7 +33,21 @@ export const useAdmin = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    // Wait for auth to finish loading before checking admin status
+    if (authLoading) {
+      return;
+    }
+    
+    if (user) {
+      checkAdminStatus();
+    } else {
+      setIsAdmin(false);
+      setLoading(false);
+    }
+  }, [user, authLoading, checkAdminStatus]);
 
   return { isAdmin, loading, refetch: checkAdminStatus };
 };

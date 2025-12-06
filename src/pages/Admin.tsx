@@ -97,14 +97,25 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authLoading && !adminLoading) {
-      if (!user || !isAdmin) {
-        navigate("/");
-        return;
-      }
-      fetchData();
+    // Don't do anything while still loading
+    if (authLoading || adminLoading) {
+      return;
     }
-  }, [user, isAdmin, authLoading, adminLoading]);
+    
+    // Only redirect if we've finished loading and confirmed not admin
+    if (!user) {
+      navigate("/");
+      return;
+    }
+    
+    if (!isAdmin) {
+      navigate("/");
+      return;
+    }
+    
+    // User is authenticated and is admin, fetch data
+    fetchData();
+  }, [user, isAdmin, authLoading, adminLoading, navigate]);
 
   const fetchData = async () => {
     try {
