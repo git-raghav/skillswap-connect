@@ -165,7 +165,6 @@ const Favorites = () => {
                   <SkillCard 
                     {...skill}
                     onRequestBarter={() => handleRequestBarter(skill)}
-                    showFavorite
                   />
                 </motion.div>
               ))}

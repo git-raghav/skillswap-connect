@@ -19,8 +19,13 @@ const Auth = () => {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        navigate("/");
+      if (event === 'SIGNED_IN' && session) {
+        // For new signups, redirect to profile for onboarding
+        if (event === 'SIGNED_IN') {
+          navigate("/profile");
+        } else {
+          navigate("/");
+        }
       }
     });
 

@@ -8,6 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Star, 
   MapPin, 
@@ -20,7 +27,8 @@ import {
   Save,
   X,
   Languages,
-  Plus
+  Plus,
+  Award
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,6 +36,8 @@ import { useToast } from "@/hooks/use-toast";
 import AvatarUpload from "@/components/profile/AvatarUpload";
 import ProofUpload from "@/components/profile/ProofUpload";
 import ReportUserDialog from "@/components/profile/ReportUserDialog";
+import BarterPortfolio from "@/components/profile/BarterPortfolio";
+import OnboardingDialog from "@/components/onboarding/OnboardingDialog";
 
 interface ProfileData {
   id: string;
@@ -41,6 +51,7 @@ interface ProfileData {
   created_at: string;
   languages: string[];
   proof_links: ProofLink[];
+  onboarding_completed: boolean;
 }
 
 interface ProofLink {
@@ -80,6 +91,10 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [stats, setStats] = useState({ rating: 0, totalBarters: 0, completionRate: 0 });
   const [newLanguage, setNewLanguage] = useState("");
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [skillLevel, setSkillLevel] = useState("intermediate");
+  const [skillTags, setSkillTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState("");
   
   const [editForm, setEditForm] = useState({
     full_name: "",
@@ -130,9 +145,16 @@ const Profile = () => {
         ...profileData,
         languages: Array.isArray(profileData.languages) ? (profileData.languages as string[]) : [],
         proof_links: Array.isArray(profileData.proof_links) ? (profileData.proof_links as unknown as ProofLink[]) : [],
+        onboarding_completed: profileData.onboarding_completed ?? true,
       };
 
       setProfile(parsedProfile);
+      
+      // Show onboarding for new users viewing their own profile
+      if (isOwnProfile && !parsedProfile.onboarding_completed) {
+        setShowOnboarding(true);
+      }
+
       setEditForm({
         full_name: parsedProfile.full_name || "",
         bio: parsedProfile.bio || "",
@@ -142,6 +164,19 @@ const Profile = () => {
         languages: parsedProfile.languages || [],
         proof_links: parsedProfile.proof_links || [],
       });
+      
+      // Fetch skill level and tags
+      const { data: skillData } = await supabase
+        .from("skills")
+        .select("skill_level, tags")
+        .eq("user_id", targetUserId)
+        .eq("skill_type", "offered")
+        .maybeSingle();
+      
+      if (skillData) {
+        setSkillLevel(skillData.skill_level || "intermediate");
+        setSkillTags((skillData.tags as string[]) || []);
+      }
 
       // Fetch proofs
       const { data: proofsData } = await supabase
@@ -285,6 +320,21 @@ const Profile = () => {
 
   const handleProofLinksChange = (links: ProofLink[]) => {
     setEditForm(prev => ({ ...prev, proof_links: links }));
+  };
+
+  const addTag = () => {
+    if (newTag.trim() && !skillTags.includes(newTag.trim())) {
+      setSkillTags(prev => [...prev, newTag.trim()]);
+      setNewTag("");
+    }
+  };
+
+  const removeTag = (tag: string) => {
+    setSkillTags(prev => prev.filter(t => t !== tag));
+  };
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
   };
 
   if (loading || authLoading) {
@@ -490,19 +540,76 @@ const Profile = () => {
                     Skills I Offer
                   </h2>
                   {editing ? (
-                    <Input
-                      value={editForm.skill_offered}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, skill_offered: e.target.value }))}
-                      placeholder="e.g., Guitar lessons, Web development"
-                    />
+                    <div className="space-y-4">
+                      <Input
+                        value={editForm.skill_offered}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, skill_offered: e.target.value }))}
+                        placeholder="e.g., Guitar lessons, Web development"
+                      />
+                      <div className="space-y-2">
+                        <Label className="text-sm">Skill Level</Label>
+                        <Select value={skillLevel} onValueChange={setSkillLevel}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="beginner">Beginner</SelectItem>
+                            <SelectItem value="intermediate">Intermediate</SelectItem>
+                            <SelectItem value="expert">Expert</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm">Tags</Label>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {skillTags.map((tag) => (
+                            <Badge key={tag} variant="secondary" className="gap-1">
+                              {tag}
+                              <button onClick={() => removeTag(tag)}>
+                                <X className="w-3 h-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <Input
+                            value={newTag}
+                            onChange={(e) => setNewTag(e.target.value)}
+                            placeholder="Add tag"
+                            className="h-8 text-sm"
+                            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
+                          />
+                          <Button size="sm" variant="outline" onClick={addTag}>
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {profile.skill_offered ? (
-                        <Badge variant="secondary" className="px-3 py-1.5">
-                          {profile.skill_offered}
-                        </Badge>
-                      ) : (
-                        <p className="text-muted-foreground text-sm">No skills listed yet</p>
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {profile.skill_offered ? (
+                          <>
+                            <Badge variant="secondary" className="px-3 py-1.5">
+                              {profile.skill_offered}
+                            </Badge>
+                            <Badge variant="outline" className="px-2 py-1 text-xs capitalize">
+                              <Award className="w-3 h-3 mr-1" />
+                              {skillLevel}
+                            </Badge>
+                          </>
+                        ) : (
+                          <p className="text-muted-foreground text-sm">No skills listed yet</p>
+                        )}
+                      </div>
+                      {skillTags.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {skillTags.map((tag) => (
+                            <Badge key={tag} variant="outline" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
                       )}
                     </div>
                   )}
@@ -588,11 +695,19 @@ const Profile = () => {
                   <p className="text-muted-foreground text-sm">No reviews yet.</p>
                 )}
               </div>
+
+              {/* Barter Portfolio */}
+              <div className="bg-card rounded-2xl border border-border p-6 shadow-card">
+                <BarterPortfolio userId={profile.user_id} />
+              </div>
             </motion.div>
           </div>
         </div>
       </main>
       <Footer />
+      
+      {/* Onboarding Dialog */}
+      <OnboardingDialog open={showOnboarding} onComplete={handleOnboardingComplete} />
     </div>
   );
 };
