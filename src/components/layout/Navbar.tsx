@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRightLeft, MessageCircle, User, Search, Menu, X, LogOut, Heart, Sparkles, BarChart3, Shield } from "lucide-react";
+import { ArrowRightLeft, MessageCircle, User, Search, Menu, X, LogOut, Heart, Sparkles, BarChart3, Shield, MapPin, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,6 +18,8 @@ const Navbar = () => {
     { path: "/browse", label: "Browse", icon: Search },
     { path: "/matches", label: "Matches", icon: Sparkles },
     { path: "/favorites", label: "Saved", icon: Heart },
+    { path: "/insights", label: "Insights", icon: TrendingUp },
+    { path: "/map", label: "Map", icon: MapPin },
     { path: "/requests", label: "Requests", icon: ArrowRightLeft },
     { path: "/messages", label: "Messages", icon: MessageCircle },
     { path: "/profile", label: "Profile", icon: User },
