@@ -4,6 +4,7 @@ import { ArrowRightLeft, MessageCircle, User, Search, Menu, X, LogOut } from "lu
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
+import NotificationBell from "./NotificationBell";
 
 const Navbar = () => {
   const location = useLocation();
@@ -53,8 +54,9 @@ const Navbar = () => {
             ))}
           </div>
 
-          {/* Auth Buttons */}
+          {/* Auth Buttons & Notifications */}
           <div className="hidden md:flex items-center gap-3">
+            {user && <NotificationBell />}
             {user ? (
               <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-2">
                 <LogOut className="w-4 h-4" />
@@ -77,12 +79,15 @@ const Navbar = () => {
           </div>
 
           {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2 text-foreground"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+          <div className="md:hidden flex items-center gap-2">
+            {user && <NotificationBell />}
+            <button
+              className="p-2 text-foreground"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
         </div>
       </div>
 
