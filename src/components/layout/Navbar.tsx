@@ -1,9 +1,10 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRightLeft, MessageCircle, User, Search, Menu, X, LogOut } from "lucide-react";
+import { ArrowRightLeft, MessageCircle, User, Search, Menu, X, LogOut, Heart, Sparkles, BarChart3, Shield } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import NotificationBell from "./NotificationBell";
 
 const Navbar = () => {
@@ -11,9 +12,12 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, signOut } = useAuth();
+  const { isAdmin } = useAdmin();
 
   const navLinks = [
-    { path: "/browse", label: "Browse Skills", icon: Search },
+    { path: "/browse", label: "Browse", icon: Search },
+    { path: "/matches", label: "Matches", icon: Sparkles },
+    { path: "/favorites", label: "Saved", icon: Heart },
     { path: "/requests", label: "Requests", icon: ArrowRightLeft },
     { path: "/messages", label: "Messages", icon: MessageCircle },
     { path: "/profile", label: "Profile", icon: User },
@@ -57,6 +61,14 @@ const Navbar = () => {
           {/* Auth Buttons & Notifications */}
           <div className="hidden md:flex items-center gap-3">
             {user && <NotificationBell />}
+            {isAdmin && (
+              <Link to="/admin">
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <Shield className="w-4 h-4" />
+                  Admin
+                </Button>
+              </Link>
+            )}
             {user ? (
               <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-2">
                 <LogOut className="w-4 h-4" />
