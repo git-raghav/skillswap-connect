@@ -7,7 +7,23 @@ import SkillCard from "@/components/skills/SkillCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, SlidersHorizontal, X, Loader2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Search, SlidersHorizontal, X, Loader2, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +39,7 @@ interface SkillListing {
   location: string;
   category: string;
   userId: string;
+  languages: string[];
 }
 
 const categories = ["All", "Technology", "Music", "Creative", "Fitness", "Languages", "Sports", "Design", "Business"];
@@ -32,6 +49,11 @@ const Browse = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [skills, setSkills] = useState<SkillListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [minRating, setMinRating] = useState(0);
+  const [locationFilter, setLocationFilter] = useState("");
+  const [languageFilter, setLanguageFilter] = useState("");
+  const [availableLocations, setAvailableLocations] = useState<string[]>([]);
+  const [availableLanguages, setAvailableLanguages] = useState<string[]>([]);
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -51,7 +73,8 @@ const Browse = () => {
           avatar_url,
           location,
           skill_offered,
-          skill_wanted
+          skill_wanted,
+          languages
         `)
         .not("skill_offered", "is", null);
 
@@ -84,16 +107,23 @@ const Browse = () => {
             userAvatar: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.user_id}`,
             skillOffered: profile.skill_offered || "Various Skills",
             skillWanted: profile.skill_wanted || "Open to offers",
-            rating: avgRating || 4.5,
+            rating: avgRating || 0,
             reviews: ratings?.length || 0,
             location: profile.location || "Remote",
             category: skillData?.category || "General",
             userId: profile.user_id,
+            languages: (profile.languages as string[]) || [],
           };
         })
       );
 
       setSkills(skillListings);
+
+      // Extract unique locations and languages for filters
+      const locations = [...new Set(skillListings.map(s => s.location).filter(Boolean))];
+      const languages = [...new Set(skillListings.flatMap(s => s.languages).filter(Boolean))];
+      setAvailableLocations(locations);
+      setAvailableLanguages(languages);
     } catch (error) {
       console.error("Error fetching skills:", error);
     } finally {
@@ -134,14 +164,29 @@ const Browse = () => {
     }
   };
 
+  const clearFilters = () => {
+    setSearchQuery("");
+    setSelectedCategory("All");
+    setMinRating(0);
+    setLocationFilter("");
+    setLanguageFilter("");
+  };
+
   const filteredSkills = skills.filter((skill) => {
     const matchesSearch =
       skill.skillOffered.toLowerCase().includes(searchQuery.toLowerCase()) ||
       skill.skillWanted.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      skill.userName.toLowerCase().includes(searchQuery.toLowerCase());
+      skill.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      skill.location.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "All" || skill.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesRating = skill.rating >= minRating;
+    const matchesLocation = !locationFilter || skill.location === locationFilter;
+    const matchesLanguage = !languageFilter || skill.languages.includes(languageFilter);
+    
+    return matchesSearch && matchesCategory && matchesRating && matchesLocation && matchesLanguage;
   });
+
+  const hasActiveFilters = minRating > 0 || locationFilter || languageFilter;
 
   return (
     <div className="min-h-screen bg-background">
@@ -187,10 +232,80 @@ const Browse = () => {
                   </button>
                 )}
               </div>
-              <Button variant="outline" size="lg" className="gap-2">
-                <SlidersHorizontal className="w-4 h-4" />
-                Filters
-              </Button>
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="lg" className="gap-2">
+                    <SlidersHorizontal className="w-4 h-4" />
+                    Filters
+                    {hasActiveFilters && (
+                      <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                        !
+                      </Badge>
+                    )}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent>
+                  <SheetHeader>
+                    <SheetTitle>Filter Skills</SheetTitle>
+                  </SheetHeader>
+                  <div className="space-y-6 mt-6">
+                    {/* Rating Filter */}
+                    <div className="space-y-3">
+                      <Label className="flex items-center gap-2">
+                        <Star className="w-4 h-4 text-primary" />
+                        Minimum Rating: {minRating.toFixed(1)}
+                      </Label>
+                      <Slider
+                        value={[minRating]}
+                        onValueChange={(value) => setMinRating(value[0])}
+                        max={5}
+                        step={0.5}
+                        className="w-full"
+                      />
+                    </div>
+
+                    {/* Location Filter */}
+                    <div className="space-y-2">
+                      <Label>Location</Label>
+                      <Select value={locationFilter} onValueChange={setLocationFilter}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="All locations" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All locations</SelectItem>
+                          {availableLocations.map((loc) => (
+                            <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Language Filter */}
+                    <div className="space-y-2">
+                      <Label>Language</Label>
+                      <Select value={languageFilter} onValueChange={setLanguageFilter}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="All languages" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">All languages</SelectItem>
+                          {availableLanguages.map((lang) => (
+                            <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Button 
+                      variant="outline" 
+                      className="w-full" 
+                      onClick={clearFilters}
+                    >
+                      Clear All Filters
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
 
             {/* Categories */}
@@ -259,7 +374,7 @@ const Browse = () => {
                   ? "No skills listed yet. Be the first to add yours!"
                   : "No skills found matching your criteria"}
               </p>
-              <Button variant="outline" onClick={() => { setSearchQuery(""); setSelectedCategory("All"); }}>
+              <Button variant="outline" onClick={clearFilters}>
                 Clear Filters
               </Button>
             </motion.div>

@@ -18,7 +18,9 @@ import {
   CheckCircle,
   Loader2,
   Save,
-  X
+  X,
+  Languages,
+  Plus
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,6 +39,14 @@ interface ProfileData {
   skill_offered: string | null;
   skill_wanted: string | null;
   created_at: string;
+  languages: string[];
+  proof_links: ProofLink[];
+}
+
+interface ProofLink {
+  id: string;
+  title: string;
+  url: string;
 }
 
 interface Proof {
@@ -69,6 +79,7 @@ const Profile = () => {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [stats, setStats] = useState({ rating: 0, totalBarters: 0, completionRate: 0 });
+  const [newLanguage, setNewLanguage] = useState("");
   
   const [editForm, setEditForm] = useState({
     full_name: "",
@@ -76,6 +87,8 @@ const Profile = () => {
     location: "",
     skill_offered: "",
     skill_wanted: "",
+    languages: [] as string[],
+    proof_links: [] as ProofLink[],
   });
 
   const isOwnProfile = !userId || (user && profile?.user_id === user.id);
@@ -113,13 +126,21 @@ const Profile = () => {
         return;
       }
 
-      setProfile(profileData);
+      const parsedProfile: ProfileData = {
+        ...profileData,
+        languages: Array.isArray(profileData.languages) ? (profileData.languages as string[]) : [],
+        proof_links: Array.isArray(profileData.proof_links) ? (profileData.proof_links as unknown as ProofLink[]) : [],
+      };
+
+      setProfile(parsedProfile);
       setEditForm({
-        full_name: profileData.full_name || "",
-        bio: profileData.bio || "",
-        location: profileData.location || "",
-        skill_offered: profileData.skill_offered || "",
-        skill_wanted: profileData.skill_wanted || "",
+        full_name: parsedProfile.full_name || "",
+        bio: parsedProfile.bio || "",
+        location: parsedProfile.location || "",
+        skill_offered: parsedProfile.skill_offered || "",
+        skill_wanted: parsedProfile.skill_wanted || "",
+        languages: parsedProfile.languages || [],
+        proof_links: parsedProfile.proof_links || [],
       });
 
       // Fetch proofs
@@ -199,13 +220,18 @@ const Profile = () => {
           location: editForm.location,
           skill_offered: editForm.skill_offered,
           skill_wanted: editForm.skill_wanted,
+          languages: editForm.languages,
+          proof_links: JSON.parse(JSON.stringify(editForm.proof_links)),
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", user.id);
 
       if (error) throw error;
 
-      setProfile(prev => prev ? { ...prev, ...editForm } : null);
+      setProfile(prev => prev ? { 
+        ...prev, 
+        ...editForm,
+      } : null);
       setEditing(false);
       toast({ title: "Profile updated!", description: "Your changes have been saved." });
     } catch (error: any) {
@@ -238,6 +264,27 @@ const Profile = () => {
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
+  };
+
+  const addLanguage = () => {
+    if (newLanguage.trim() && !editForm.languages.includes(newLanguage.trim())) {
+      setEditForm(prev => ({
+        ...prev,
+        languages: [...prev.languages, newLanguage.trim()]
+      }));
+      setNewLanguage("");
+    }
+  };
+
+  const removeLanguage = (lang: string) => {
+    setEditForm(prev => ({
+      ...prev,
+      languages: prev.languages.filter(l => l !== lang)
+    }));
+  };
+
+  const handleProofLinksChange = (links: ProofLink[]) => {
+    setEditForm(prev => ({ ...prev, proof_links: links }));
   };
 
   if (loading || authLoading) {
@@ -308,6 +355,48 @@ const Profile = () => {
                   <div className="flex items-center justify-center gap-1 text-sm text-muted-foreground">
                     <Calendar className="w-4 h-4" />
                     Joined {new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                  </div>
+                </div>
+
+                {/* Languages */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Languages className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium text-foreground">Languages</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {editing ? (
+                      <>
+                        {editForm.languages.map((lang) => (
+                          <Badge key={lang} variant="secondary" className="gap-1">
+                            {lang}
+                            <button onClick={() => removeLanguage(lang)}>
+                              <X className="w-3 h-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                        <div className="flex gap-1 w-full mt-2">
+                          <Input
+                            value={newLanguage}
+                            onChange={(e) => setNewLanguage(e.target.value)}
+                            placeholder="Add language"
+                            className="h-8 text-sm flex-1"
+                            onKeyDown={(e) => e.key === "Enter" && addLanguage()}
+                          />
+                          <Button size="sm" variant="outline" onClick={addLanguage}>
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      profile.languages.length > 0 ? (
+                        profile.languages.map((lang) => (
+                          <Badge key={lang} variant="secondary">{lang}</Badge>
+                        ))
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No languages set</span>
+                      )
+                    )}
                   </div>
                 </div>
 
@@ -451,8 +540,10 @@ const Profile = () => {
                 <ProofUpload
                   userId={profile.user_id}
                   proofs={proofs}
+                  proofLinks={editing ? editForm.proof_links : profile.proof_links}
                   onProofsChange={setProofs}
-                  editable={isOwnProfile}
+                  onProofLinksChange={handleProofLinksChange}
+                  editable={isOwnProfile && editing}
                 />
               </div>
 
@@ -469,25 +560,32 @@ const Profile = () => {
                         <img
                           src={review.avatar}
                           alt={review.reviewer}
-                          className="w-12 h-12 rounded-full object-cover"
+                          className="w-10 h-10 rounded-full object-cover"
                         />
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-semibold text-foreground">{review.reviewer}</span>
-                            <div className="flex items-center gap-1">
-                              {Array.from({ length: review.rating }).map((_, i) => (
-                                <Star key={i} className="w-3 h-3 text-primary fill-primary" />
-                              ))}
-                            </div>
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="font-medium text-foreground">{review.reviewer}</h4>
+                            <span className="text-xs text-muted-foreground">{review.date}</span>
                           </div>
-                          <p className="text-muted-foreground text-sm mb-1">{review.text}</p>
-                          <span className="text-xs text-muted-foreground">{review.date}</span>
+                          <div className="flex items-center gap-1 mb-2">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-3 h-3 ${
+                                  i < review.rating
+                                    ? "text-primary fill-primary"
+                                    : "text-muted"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{review.text}</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground text-center py-8">No reviews yet</p>
+                  <p className="text-muted-foreground text-sm">No reviews yet.</p>
                 )}
               </div>
             </motion.div>
