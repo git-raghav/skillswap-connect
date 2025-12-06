@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 const featuredSkills = [
   {
     id: "1",
+    userId: "demo-1",
     userName: "Alex Rivera",
     userAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
     skillOffered: "Guitar Lessons",
@@ -18,6 +19,7 @@ const featuredSkills = [
   },
   {
     id: "2",
+    userId: "demo-2",
     userName: "Maya Chen",
     userAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face",
     skillOffered: "Python Programming",
@@ -29,6 +31,7 @@ const featuredSkills = [
   },
   {
     id: "3",
+    userId: "demo-3",
     userName: "Jordan Kim",
     userAvatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&h=150&fit=crop&crop=face",
     skillOffered: "Photography",
@@ -40,6 +43,7 @@ const featuredSkills = [
   },
   {
     id: "4",
+    userId: "demo-4",
     userName: "Sam Patel",
     userAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face",
     skillOffered: "Yoga Instruction",

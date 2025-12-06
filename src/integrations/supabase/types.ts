@@ -105,7 +105,9 @@ export type Database = {
           email_notifications: boolean | null
           full_name: string
           id: string
+          languages: string[] | null
           location: string | null
+          proof_links: Json | null
           skill_offered: string | null
           skill_wanted: string | null
           updated_at: string
@@ -118,7 +120,9 @@ export type Database = {
           email_notifications?: boolean | null
           full_name: string
           id?: string
+          languages?: string[] | null
           location?: string | null
+          proof_links?: Json | null
           skill_offered?: string | null
           skill_wanted?: string | null
           updated_at?: string
@@ -131,7 +135,9 @@ export type Database = {
           email_notifications?: boolean | null
           full_name?: string
           id?: string
+          languages?: string[] | null
           location?: string | null
+          proof_links?: Json | null
           skill_offered?: string | null
           skill_wanted?: string | null
           updated_at?: string
