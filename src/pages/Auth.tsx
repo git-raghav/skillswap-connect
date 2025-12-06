@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowRightLeft, Loader2 } from "lucide-react";
+import BannedScreen from "@/components/auth/BannedScreen";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,6 +15,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showBannedScreen, setShowBannedScreen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -44,11 +46,28 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
+        
+        // Check if user is banned
+        if (data.user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("is_banned")
+            .eq("user_id", data.user.id)
+            .maybeSingle();
+          
+          if (profile?.is_banned) {
+            await supabase.auth.signOut();
+            setShowBannedScreen(true);
+            setLoading(false);
+            return;
+          }
+        }
+        
         toast({ title: "Welcome back!", description: "You've successfully logged in." });
       } else {
         const { error } = await supabase.auth.signUp({
@@ -72,6 +91,10 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  if (showBannedScreen) {
+    return <BannedScreen />;
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">

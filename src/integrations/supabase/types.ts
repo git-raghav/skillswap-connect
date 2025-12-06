@@ -158,6 +158,7 @@ export type Database = {
           created_at: string
           email_notifications: boolean | null
           full_name: string
+          gender: string | null
           id: string
           is_banned: boolean | null
           languages: string[] | null
@@ -175,6 +176,7 @@ export type Database = {
           created_at?: string
           email_notifications?: boolean | null
           full_name: string
+          gender?: string | null
           id?: string
           is_banned?: boolean | null
           languages?: string[] | null
@@ -192,6 +194,7 @@ export type Database = {
           created_at?: string
           email_notifications?: boolean | null
           full_name?: string
+          gender?: string | null
           id?: string
           is_banned?: boolean | null
           languages?: string[] | null

@@ -44,7 +44,7 @@ const SkillCard = ({
       viewport={{ once: true }}
       whileHover={{ y: -4 }}
       transition={{ duration: 0.3 }}
-      className="bg-card rounded-2xl border border-border p-6 shadow-card hover:shadow-hover transition-all duration-300"
+      className="bg-card rounded-2xl border border-border p-6 shadow-card hover:shadow-hover transition-all duration-300 h-full flex flex-col"
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
@@ -81,24 +81,24 @@ const SkillCard = ({
       </div>
 
       {/* Skills Exchange */}
-      <div className="bg-muted/50 rounded-xl p-4 mb-4">
+      <div className="bg-muted/50 rounded-xl p-4 mb-4 flex-1">
         <div className="flex items-center gap-3">
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <p className="text-xs text-muted-foreground mb-1">Offers</p>
-            <p className="font-medium text-foreground">{skillOffered}</p>
+            <p className="font-medium text-foreground line-clamp-2">{skillOffered}</p>
           </div>
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
             <ArrowRightLeft className="w-5 h-5 text-primary" />
           </div>
-          <div className="flex-1 text-right">
+          <div className="flex-1 min-w-0 text-right">
             <p className="text-xs text-muted-foreground mb-1">Wants</p>
-            <p className="font-medium text-foreground">{skillWanted}</p>
+            <p className="font-medium text-foreground line-clamp-2">{skillWanted}</p>
           </div>
         </div>
       </div>
 
       {/* Rating & Action */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mt-auto">
         <div className="flex items-center gap-1">
           <Star className="w-4 h-4 text-primary fill-primary" />
           <span className="font-semibold text-foreground">{rating.toFixed(1)}</span>

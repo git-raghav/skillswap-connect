@@ -1,11 +1,12 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRightLeft, MessageCircle, User, Search, Menu, X, LogOut, Heart, Sparkles, BarChart3, Shield, MapPin, TrendingUp } from "lucide-react";
+import { ArrowRightLeft, MessageCircle, User, Search, Menu, X, LogOut, Heart, Sparkles, Shield, MapPin, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import NotificationBell from "./NotificationBell";
+import ThemeToggle from "./ThemeToggle";
 
 const Navbar = () => {
   const location = useLocation();
@@ -62,6 +63,7 @@ const Navbar = () => {
 
           {/* Auth Buttons & Notifications */}
           <div className="hidden md:flex items-center gap-3">
+            <ThemeToggle />
             {user && <NotificationBell />}
             {isAdmin && (
               <Link to="/admin">
@@ -94,6 +96,7 @@ const Navbar = () => {
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center gap-2">
+            <ThemeToggle />
             {user && <NotificationBell />}
             <button
               className="p-2 text-foreground"
