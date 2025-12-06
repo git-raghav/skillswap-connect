@@ -8,6 +8,7 @@ import Browse from "./pages/Browse";
 import Profile from "./pages/Profile";
 import Requests from "./pages/Requests";
 import Messages from "./pages/Messages";
+import Categories from "./pages/Categories";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -29,6 +30,8 @@ const App = () => (
           <Route path="/profile/:userId" element={<Profile />} />
           <Route path="/requests" element={<Requests />} />
           <Route path="/messages" element={<Messages />} />
+          <Route path="/categories" element={<Categories />} />
+          <Route path="/categories/:categoryName" element={<Categories />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

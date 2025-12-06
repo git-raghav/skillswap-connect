@@ -12,11 +12,14 @@ import {
   XCircle, 
   MessageCircle,
   ArrowRightLeft,
-  Loader2
+  Loader2,
+  Star
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useSendNotification } from "@/hooks/useSendNotification";
+import RatingDialog from "@/components/profile/RatingDialog";
 
 interface BarterRequest {
   id: string;
@@ -31,6 +34,7 @@ interface BarterRequest {
   date: string;
   type: "incoming" | "outgoing";
   message: string;
+  hasRated: boolean;
 }
 
 const statusConfig = {
@@ -44,8 +48,11 @@ const Requests = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [requests, setRequests] = useState<BarterRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<BarterRequest | null>(null);
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const { sendNotification } = useSendNotification();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -82,6 +89,15 @@ const Requests = () => {
         .select("user_id, full_name, avatar_url, skill_offered, skill_wanted")
         .in("user_id", Array.from(userIds));
 
+      // Check existing ratings
+      const barterIds = data?.map(req => req.id) || [];
+      const { data: ratings } = await supabase
+        .from("ratings")
+        .select("barter_id, rater_id")
+        .in("barter_id", barterIds)
+        .eq("rater_id", user.id);
+
+      const ratedBarters = new Set(ratings?.map(r => r.barter_id) || []);
       const profileMap = new Map(profiles?.map(p => [p.user_id, p]));
 
       const formattedRequests: BarterRequest[] = (data || []).map(req => {
@@ -107,6 +123,7 @@ const Requests = () => {
           date: getRelativeTime(req.created_at),
           type: isIncoming ? "incoming" : "outgoing",
           message: req.message || "",
+          hasRated: ratedBarters.has(req.id),
         };
       });
 
@@ -131,17 +148,31 @@ const Requests = () => {
     return date.toLocaleDateString();
   };
 
-  const handleAccept = async (requestId: string) => {
+  const handleAccept = async (request: BarterRequest) => {
     try {
       const { error } = await supabase
         .from("barter_requests")
         .update({ status: "accepted", updated_at: new Date().toISOString() })
-        .eq("id", requestId);
+        .eq("id", request.id);
 
       if (error) throw error;
 
+      // Get my profile for notification
+      const { data: myProfile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("user_id", user?.id)
+        .single();
+
+      // Send notification
+      sendNotification({
+        type: "barter_accepted",
+        recipientUserId: request.user.id,
+        senderName: myProfile?.full_name || "Someone",
+      });
+
       setRequests(prev => prev.map(r => 
-        r.id === requestId ? { ...r, status: "accepted" } : r
+        r.id === request.id ? { ...r, status: "accepted" } : r
       ));
       toast({ title: "Request accepted!", description: "You can now start chatting." });
     } catch (error: any) {
@@ -149,17 +180,31 @@ const Requests = () => {
     }
   };
 
-  const handleDecline = async (requestId: string) => {
+  const handleDecline = async (request: BarterRequest) => {
     try {
       const { error } = await supabase
         .from("barter_requests")
         .update({ status: "declined", updated_at: new Date().toISOString() })
-        .eq("id", requestId);
+        .eq("id", request.id);
 
       if (error) throw error;
 
+      // Get my profile for notification
+      const { data: myProfile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("user_id", user?.id)
+        .single();
+
+      // Send notification
+      sendNotification({
+        type: "barter_declined",
+        recipientUserId: request.user.id,
+        senderName: myProfile?.full_name || "Someone",
+      });
+
       setRequests(prev => prev.map(r => 
-        r.id === requestId ? { ...r, status: "declined" } : r
+        r.id === request.id ? { ...r, status: "declined" } : r
       ));
       toast({ title: "Request declined" });
     } catch (error: any) {
@@ -183,6 +228,37 @@ const Requests = () => {
     }
   };
 
+  const handleComplete = async (request: BarterRequest) => {
+    try {
+      const { error } = await supabase
+        .from("barter_requests")
+        .update({ status: "completed", updated_at: new Date().toISOString() })
+        .eq("id", request.id);
+
+      if (error) throw error;
+
+      setRequests(prev => prev.map(r => 
+        r.id === request.id ? { ...r, status: "completed" } : r
+      ));
+      
+      // Open rating dialog
+      setSelectedRequest(request);
+      setRatingDialogOpen(true);
+      
+      toast({ title: "Barter completed!", description: "Please rate your experience." });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleRatingComplete = () => {
+    if (selectedRequest) {
+      setRequests(prev => prev.map(r => 
+        r.id === selectedRequest.id ? { ...r, hasRated: true } : r
+      ));
+    }
+  };
+
   const filteredRequests = requests.filter((req) => {
     if (activeTab === "all") return true;
     if (activeTab === "incoming") return req.type === "incoming";
@@ -201,14 +277,21 @@ const Requests = () => {
         className="bg-card rounded-xl border border-border p-5 shadow-card hover:shadow-hover transition-all"
       >
         <div className="flex items-start gap-4">
-          <img
-            src={request.user.avatar}
-            alt={request.user.name}
-            className="w-14 h-14 rounded-full object-cover border-2 border-primary/10"
-          />
+          <button onClick={() => navigate(`/profile/${request.user.id}`)}>
+            <img
+              src={request.user.avatar}
+              alt={request.user.name}
+              className="w-14 h-14 rounded-full object-cover border-2 border-primary/10 hover:border-primary/30 transition-colors"
+            />
+          </button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2 mb-2">
-              <h3 className="font-semibold text-foreground truncate">{request.user.name}</h3>
+              <button 
+                onClick={() => navigate(`/profile/${request.user.id}`)}
+                className="font-semibold text-foreground truncate hover:text-primary transition-colors"
+              >
+                {request.user.name}
+              </button>
               <Badge variant="secondary" className={`${status.color} shrink-0`}>
                 <StatusIcon className="w-3 h-3 mr-1" />
                 {status.label}
@@ -230,23 +313,46 @@ const Requests = () => {
               <div className="flex gap-2">
                 {request.status === "pending" && request.type === "incoming" && (
                   <>
-                    <Button size="sm" variant="default" onClick={() => handleAccept(request.id)}>
+                    <Button size="sm" variant="default" onClick={() => handleAccept(request)}>
                       Accept
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDecline(request.id)}>
+                    <Button size="sm" variant="outline" onClick={() => handleDecline(request)}>
                       Decline
                     </Button>
                   </>
                 )}
                 {request.status === "accepted" && (
+                  <>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="gap-1"
+                      onClick={() => navigate("/messages")}
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      Chat
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="default" 
+                      onClick={() => handleComplete(request)}
+                    >
+                      Complete
+                    </Button>
+                  </>
+                )}
+                {request.status === "completed" && !request.hasRated && (
                   <Button 
                     size="sm" 
-                    variant="soft" 
+                    variant="default" 
                     className="gap-1"
-                    onClick={() => navigate("/messages")}
+                    onClick={() => {
+                      setSelectedRequest(request);
+                      setRatingDialogOpen(true);
+                    }}
                   >
-                    <MessageCircle className="w-4 h-4" />
-                    Chat
+                    <Star className="w-4 h-4" />
+                    Rate
                   </Button>
                 )}
                 {request.status === "pending" && request.type === "outgoing" && (
@@ -320,6 +426,17 @@ const Requests = () => {
         </div>
       </main>
       <Footer />
+
+      {selectedRequest && (
+        <RatingDialog
+          open={ratingDialogOpen}
+          onOpenChange={setRatingDialogOpen}
+          barterId={selectedRequest.id}
+          ratedUserId={selectedRequest.user.id}
+          ratedUserName={selectedRequest.user.name}
+          onRatingComplete={handleRatingComplete}
+        />
+      )}
     </div>
   );
 };
