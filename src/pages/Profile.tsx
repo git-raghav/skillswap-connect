@@ -28,7 +28,8 @@ import {
   X,
   Languages,
   Plus,
-  Award
+  Award,
+  User as UserIcon
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,6 +53,7 @@ interface ProfileData {
   languages: string[];
   proof_links: ProofLink[];
   onboarding_completed: boolean;
+  gender: string | null;
 }
 
 interface ProofLink {
@@ -104,6 +106,7 @@ const Profile = () => {
     skill_wanted: "",
     languages: [] as string[],
     proof_links: [] as ProofLink[],
+    gender: "",
   });
 
   const isOwnProfile = !userId || (user && profile?.user_id === user.id);
@@ -146,6 +149,7 @@ const Profile = () => {
         languages: Array.isArray(profileData.languages) ? (profileData.languages as string[]) : [],
         proof_links: Array.isArray(profileData.proof_links) ? (profileData.proof_links as unknown as ProofLink[]) : [],
         onboarding_completed: profileData.onboarding_completed ?? true,
+        gender: profileData.gender ?? null,
       };
 
       setProfile(parsedProfile);
@@ -163,6 +167,7 @@ const Profile = () => {
         skill_wanted: parsedProfile.skill_wanted || "",
         languages: parsedProfile.languages || [],
         proof_links: parsedProfile.proof_links || [],
+        gender: parsedProfile.gender || "",
       });
       
       // Fetch skill level and tags
@@ -257,6 +262,7 @@ const Profile = () => {
           skill_wanted: editForm.skill_wanted,
           languages: editForm.languages,
           proof_links: JSON.parse(JSON.stringify(editForm.proof_links)),
+          gender: editForm.gender || null,
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", user.id);
@@ -406,6 +412,35 @@ const Profile = () => {
                     <Calendar className="w-4 h-4" />
                     Joined {new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
                   </div>
+                </div>
+
+                {/* Gender */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <UserIcon className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium text-foreground">Gender</span>
+                  </div>
+                  {editing ? (
+                    <Select 
+                      value={editForm.gender || "not_specified"} 
+                      onValueChange={(v) => setEditForm(prev => ({ ...prev, gender: v === "not_specified" ? "" : v }))}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="not_specified">Prefer not to say</SelectItem>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="non_binary">Non-binary</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span className="text-sm text-muted-foreground capitalize">
+                      {profile.gender?.replace("_", " ") || "Not specified"}
+                    </span>
+                  )}
                 </div>
 
                 {/* Languages */}
