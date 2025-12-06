@@ -4,6 +4,7 @@ import { Star, MapPin, ArrowRightLeft, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useFavorites } from "@/hooks/useFavorites";
+import OnlineIndicator from "@/components/ui/OnlineIndicator";
 
 interface SkillCardProps {
   id: string;
@@ -18,6 +19,7 @@ interface SkillCardProps {
   userId: string;
   onRequestBarter?: () => void;
   showFavorite?: boolean;
+  isOnline?: boolean;
 }
 
 const SkillCard = ({
@@ -32,6 +34,7 @@ const SkillCard = ({
   userId,
   onRequestBarter,
   showFavorite = true,
+  isOnline = false,
 }: SkillCardProps) => {
   const navigate = useNavigate();
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -52,11 +55,14 @@ const SkillCard = ({
           onClick={() => navigate(`/profile/${userId}`)}
           className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity"
         >
-          <img
-            src={userAvatar}
-            alt={userName}
-            className="w-12 h-12 rounded-full object-cover border-2 border-primary/20"
-          />
+          <div className="relative">
+            <img
+              src={userAvatar}
+              alt={userName}
+              className="w-12 h-12 rounded-full object-cover border-2 border-primary/20"
+            />
+            <OnlineIndicator isOnline={isOnline} size="sm" className="bottom-0 right-0" />
+          </div>
           <div>
             <h3 className="font-semibold text-foreground hover:text-primary transition-colors">{userName}</h3>
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
