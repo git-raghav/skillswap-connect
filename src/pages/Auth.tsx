@@ -20,24 +20,26 @@ const Auth = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // For new signups, redirect to profile for onboarding
-        if (event === 'SIGNED_IN') {
-          navigate("/profile");
-        } else {
-          navigate("/");
-        }
-      }
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Only check existing session on mount, don't listen to auth changes
+    // This prevents automatic redirect when banned user is signed out
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
+        // Check if user is banned before redirecting
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("is_banned")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        
+        if (profile?.is_banned) {
+          await supabase.auth.signOut();
+          setShowBannedScreen(true);
+          return;
+        }
+        
         navigate("/");
       }
     });
-
-    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
